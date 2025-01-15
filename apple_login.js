@@ -5,6 +5,7 @@ import session from 'express-session';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';  // For loading private key
 
 dotenv.config();
 
@@ -15,19 +16,22 @@ const {
   APPLE_CLIENT_ID,
   APPLE_TEAM_ID,
   APPLE_KEY_ID,
-  APPLE_PRIVATE_KEY,
+  APPLE_PRIVATE_KEY_PATH,  // Path to the private key (instead of storing in .env)
   APPLE_CALLBACK_URL,
   SESSION_SECRET,
 } = process.env;
 
-// Function to generate the client secret (JWT)
+// Load the private key from the specified path
+const privateKey = fs.readFileSync(APPLE_PRIVATE_KEY_PATH, 'utf8');
+
+// Function to generate the client secret (JWT) using the private key
 const generateClientSecret = () => {
-  return jwt.sign({}, APPLE_PRIVATE_KEY, {
+  return jwt.sign({}, privateKey, {
     algorithm: 'ES256',
     expiresIn: '180d', 
-    audience: 'https://appleid.apple.com', 
-    issuer: APPLE_TEAM_ID, 
-    subject: APPLE_CLIENT_ID, 
+    audience: 'https://appleid.apple.com',
+    issuer: APPLE_TEAM_ID,
+    subject: APPLE_CLIENT_ID,
   });
 };
 
@@ -56,7 +60,7 @@ passport.use(new AppleStrategy({
   clientID: APPLE_CLIENT_ID, 
   teamID: APPLE_TEAM_ID, 
   keyID: APPLE_KEY_ID,
-  privateKey: APPLE_PRIVATE_KEY,
+  privateKey: privateKey,  // Use the private key loaded from the file
   clientSecret: generateClientSecret(), 
   callbackURL: APPLE_CALLBACK_URL, // The callback URL to handle after authentication
 }, (accessToken, refreshToken, profile, done) => {
